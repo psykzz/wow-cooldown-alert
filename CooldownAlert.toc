@@ -1,0 +1,7 @@
+## Interface: 11508,20505,50503,110207
+## Title: Cooldown Alert
+## Notes: Shows remaining time on failed spell or item casts.
+## Author: Gemini Partner
+## Version: 1.1
+
+CooldownAlert.lua
