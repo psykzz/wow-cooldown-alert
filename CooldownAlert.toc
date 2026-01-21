@@ -2,6 +2,6 @@
 ## Title: Cooldown Alert
 ## Notes: Shows remaining time on failed spell or item casts.
 ## Author: Gemini Partner
-## Version: 1.1
+## Version: @project-version@
 
 CooldownAlert.lua
