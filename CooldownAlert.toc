@@ -3,5 +3,7 @@
 ## Notes: Shows remaining time on failed spell or item casts.
 ## Author: Gemini Partner
 ## Version: @project-version@
+## X-Curse-Project-ID: 1439617
+
 
 CooldownAlert.lua
