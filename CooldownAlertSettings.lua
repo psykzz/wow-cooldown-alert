@@ -90,6 +90,7 @@ local function InitRetailSettings()
         "fontSize", Settings.VarType.Number, "Font Size",
         function()    return CooldownAlertDB.fontSize end,
         function(_, v)
+            if v == nil then return end
             CooldownAlertDB.fontSize = math.floor(v)
             CooldownAlert.ApplySettings()
         end
@@ -97,7 +98,7 @@ local function InitRetailSettings()
     local fontSizeOpts = Settings.CreateSliderOptions(10, 72, 1)
     fontSizeOpts:SetLabelFormatter(
         MinimalSliderWithSteppersMixin.Label.Right,
-        function(v) return tostring(math.floor(v)) end
+        function(v) return v ~= nil and tostring(math.floor(v)) or "" end
     )
     Settings.CreateSlider(category, fontSizeSetting, fontSizeOpts,
         "Size of the cooldown countdown text")
@@ -141,6 +142,7 @@ local function InitRetailSettings()
         "posX", Settings.VarType.Number, "Horizontal Position",
         function()    return CooldownAlertDB.posX end,
         function(_, v)
+            if v == nil then return end
             CooldownAlertDB.posX = math.floor(v)
             CooldownAlert.ApplySettings()
         end
@@ -148,7 +150,7 @@ local function InitRetailSettings()
     local posXOpts = Settings.CreateSliderOptions(-500, 500, 1)
     posXOpts:SetLabelFormatter(
         MinimalSliderWithSteppersMixin.Label.Right,
-        function(v) return tostring(math.floor(v)) end
+        function(v) return v ~= nil and tostring(math.floor(v)) or "" end
     )
     Settings.CreateSlider(category, posXSetting, posXOpts,
         "Horizontal offset from the centre of the screen")
@@ -158,6 +160,7 @@ local function InitRetailSettings()
         "posY", Settings.VarType.Number, "Vertical Position",
         function()    return CooldownAlertDB.posY end,
         function(_, v)
+            if v == nil then return end
             CooldownAlertDB.posY = math.floor(v)
             CooldownAlert.ApplySettings()
         end
@@ -165,7 +168,7 @@ local function InitRetailSettings()
     local posYOpts = Settings.CreateSliderOptions(-500, 500, 1)
     posYOpts:SetLabelFormatter(
         MinimalSliderWithSteppersMixin.Label.Right,
-        function(v) return tostring(math.floor(v)) end
+        function(v) return v ~= nil and tostring(math.floor(v)) or "" end
     )
     Settings.CreateSlider(category, posYSetting, posYOpts,
         "Vertical offset from the centre of the screen")
