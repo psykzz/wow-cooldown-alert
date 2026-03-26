@@ -166,11 +166,17 @@ display:SetScript("OnUpdate", function(self, elapsed)
         start, duration = GetSpellCD(activeSpellID)
     end
 
-    if start and duration and not issecretvalue(start) and not issecretvalue(duration) then
-        local remaining = start + duration - GetTime()
-        -- math.max requires comparison; skip the floor at 0 when remaining is secret
-        if not issecretvalue(remaining) then remaining = math.max(0, remaining) end
-        self.text:SetText(FormatTime(remaining))
+    if start and duration then
+        local remaining
+        if not issecretvalue(start) then
+            -- Exact calculation when start is available
+            remaining = start + duration - GetTime()
+            if not issecretvalue(remaining) then remaining = math.max(0, remaining) end
+        elseif not issecretvalue(duration) then
+            -- start is secret; approximate remaining using time elapsed since trigger
+            remaining = math.max(0, duration - timeSinceTrigger)
+        end
+        if remaining then self.text:SetText(FormatTime(remaining)) end
     end
 
     -- Fade out using current saved values so changes take effect immediately
