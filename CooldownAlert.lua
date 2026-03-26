@@ -54,8 +54,13 @@ display.text:SetPoint("CENTER")
 display.text:SetTextColor(1, 1, 1)
 display.text:SetFont(display.text:GetFont(), 28, "OUTLINE")
 
--- Format remaining seconds according to the saved textFormat setting
+-- Format remaining seconds according to the saved textFormat setting.
+-- When remaining is a secret number (WoW Midnight) it cannot be compared,
+-- so fall back to the game's AbbreviatedNumberFormatter.
 local function FormatTime(remaining)
+    if issecretvalue(remaining) then
+        return AbbreviatedNumberFormatter(remaining)
+    end
     local fmt = CooldownAlertDB and CooldownAlertDB.textFormat or "auto3"
     if fmt == "auto1" then
         return remaining > 1 and string.format("%.0fs", remaining) or string.format("%.1fs", remaining)
@@ -120,7 +125,7 @@ eventFrame:SetScript("OnEvent", function(self, event, unit, _, spellID)
 
     if unit ~= "player" or not spellID then return end
 
-    --handle items
+    -- Handle items
     local itemId = item_spells[spellID]
     local start, duration
 
@@ -134,15 +139,20 @@ eventFrame:SetScript("OnEvent", function(self, event, unit, _, spellID)
         activeItemID = nil
     end
 
-    -- ignore gcd or short cds
-    if not duration or duration <= 1.5 then return end
+    -- Ignore GCD or very short cooldowns.  Secret durations cannot be compared,
+    -- so skip the filter and treat them as real cooldowns worth showing.
+    if not issecretvalue(duration) and (not duration or duration <= 1.5) then return end
+
     local timeLeft = start + duration - GetTime()
 
-    if timeLeft > OFFSET then
-        timeSinceTrigger = 0
-        display:SetAlpha(1)
-        display:Show()
-    end
+    -- Skip the offset check when timeLeft is secret; the arithmetic on a secret
+    -- value produces another secret, and UNIT_SPELLCAST_FAILED only fires when
+    -- the spell is genuinely on cooldown so it is safe to show the alert.
+    if not issecretvalue(timeLeft) and timeLeft <= OFFSET then return end
+
+    timeSinceTrigger = 0
+    display:SetAlpha(1)
+    display:Show()
 end)
 
 display:SetScript("OnUpdate", function(self, elapsed)
@@ -157,8 +167,10 @@ display:SetScript("OnUpdate", function(self, elapsed)
     end
 
     if start and duration then
-        local currentRemaining = math.max(0, start + duration - GetTime())
-        self.text:SetText(FormatTime(currentRemaining))
+        local remaining = start + duration - GetTime()
+        -- math.max requires comparison; skip the floor at 0 when remaining is secret
+        if not issecretvalue(remaining) then remaining = math.max(0, remaining) end
+        self.text:SetText(FormatTime(remaining))
     end
 
     -- Fade out using current saved values so changes take effect immediately
