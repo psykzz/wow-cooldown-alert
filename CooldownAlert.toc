@@ -4,5 +4,7 @@
 ## Author: PsyKzz
 ## Version: @project-version@
 ## X-Curse-Project-ID: 1439617
+## SavedVariables: CooldownAlertDB
 
 CooldownAlert.lua
+CooldownAlertSettings.lua

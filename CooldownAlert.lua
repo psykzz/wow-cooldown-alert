@@ -22,25 +22,77 @@ end
 local GetContainerNumSlots = (C_Container and C_Container.GetContainerNumSlots) or GetContainerNumSlots
 local GetContainerItemID = (C_Container and C_Container.GetContainerItemID) or GetContainerItemID
 
-local HOLD_TIME = 0.3
-local FADE_OUT_TIME = 0.7
-local TOTAL_DURATION = FADE_OUT_TIME + HOLD_TIME
 local OFFSET = 0.5
+
+-- Addon namespace shared with CooldownAlertSettings.lua
+CooldownAlert = CooldownAlert or {}
+
+-- Default values used for first-time initialization and Settings API defaults
+CooldownAlertDB_Defaults = {
+    holdTime     = 0.3,
+    fadeOutTime  = 0.7,
+    fontSize     = 28,
+    fontFace     = "Fonts\\FRIZQT__.TTF",
+    fontFlags    = "OUTLINE",
+    posX         = 0,
+    posY         = 0,
+    textFormat   = "auto3",
+}
 
 local item_spells = {}
 local activeSpellID = nil
 local activeItemID = nil
 local timeSinceTrigger = 0
 
-local display = CreateFrame("Frame", nil, UIParent)
+local display = CreateFrame("Frame", "CooldownAlertFrame", UIParent)
 display:SetSize(250, 50)
 display:SetPoint("CENTER", 0, 0)
 display:Hide()
 
 display.text = display:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 display.text:SetPoint("CENTER")
-display.text:SetTextColor(1, 1, 1) -- white
+display.text:SetTextColor(1, 1, 1)
 display.text:SetFont(display.text:GetFont(), 28, "OUTLINE")
+
+-- Format remaining seconds according to the saved textFormat setting
+local function FormatTime(remaining)
+    local fmt = CooldownAlertDB and CooldownAlertDB.textFormat or "auto3"
+    if fmt == "auto1" then
+        return remaining > 1 and string.format("%.0fs", remaining) or string.format("%.1fs", remaining)
+    elseif fmt == "decimal" then
+        return string.format("%.1fs", remaining)
+    elseif fmt == "integer" then
+        return string.format("%.0fs", remaining)
+    else -- "auto3" (default)
+        return remaining > 3 and string.format("%.0fs", remaining) or string.format("%.1fs", remaining)
+    end
+end
+
+-- Apply font and position settings from CooldownAlertDB to the display frame
+function CooldownAlert.ApplySettings()
+    local db = CooldownAlertDB
+    if not db then return end
+    display:ClearAllPoints()
+    display:SetPoint("CENTER", UIParent, "CENTER", db.posX or 0, db.posY or 0)
+    display.text:SetFont(
+        db.fontFace  or CooldownAlertDB_Defaults.fontFace,
+        db.fontSize  or CooldownAlertDB_Defaults.fontSize,
+        db.fontFlags or CooldownAlertDB_Defaults.fontFlags
+    )
+end
+
+-- Initialise saved variables and apply settings on first load
+local initFrame = CreateFrame("Frame")
+initFrame:RegisterEvent("ADDON_LOADED")
+initFrame:SetScript("OnEvent", function(self, event, addonName)
+    if addonName ~= "CooldownAlert" then return end
+    if not CooldownAlertDB then CooldownAlertDB = {} end
+    for k, v in pairs(CooldownAlertDB_Defaults) do
+        if CooldownAlertDB[k] == nil then CooldownAlertDB[k] = v end
+    end
+    CooldownAlert.ApplySettings()
+    self:UnregisterEvent("ADDON_LOADED")
+end)
 
 local function ScanBags()
     wipe(item_spells)
@@ -71,7 +123,7 @@ eventFrame:SetScript("OnEvent", function(self, event, unit, _, spellID)
     --handle items
     local itemId = item_spells[spellID]
     local start, duration
-    
+
     if itemId then
         start, duration = GetItemCD(itemId)
         activeItemID = itemId
@@ -96,7 +148,7 @@ end)
 display:SetScript("OnUpdate", function(self, elapsed)
     timeSinceTrigger = timeSinceTrigger + elapsed
 
-    -- Update remaining time
+    -- Update remaining time text
     local start, duration
     if activeItemID then
         start, duration = GetItemCD(activeItemID)
@@ -106,19 +158,19 @@ display:SetScript("OnUpdate", function(self, elapsed)
 
     if start and duration then
         local currentRemaining = math.max(0, start + duration - GetTime())
-        if currentRemaining > 3 then
-            self.text:SetText(string.format("%.0fs", currentRemaining))
-        else 
-
-            self.text:SetText(string.format("%.1fs", currentRemaining))
-        end
+        self.text:SetText(FormatTime(currentRemaining))
     end
 
-    -- Fade out loop
-    if timeSinceTrigger > TOTAL_DURATION then
+    -- Fade out using current saved values so changes take effect immediately
+    local db = CooldownAlertDB
+    local holdTime    = db and db.holdTime    or CooldownAlertDB_Defaults.holdTime
+    local fadeOutTime = db and db.fadeOutTime or CooldownAlertDB_Defaults.fadeOutTime
+    local totalDuration = holdTime + fadeOutTime
+
+    if timeSinceTrigger > totalDuration then
         self:Hide()
-    elseif timeSinceTrigger > HOLD_TIME then
-        local fadeProgress = (timeSinceTrigger - HOLD_TIME) / FADE_OUT_TIME
+    elseif timeSinceTrigger > holdTime then
+        local fadeProgress = (timeSinceTrigger - holdTime) / fadeOutTime
         self:SetAlpha(1 - fadeProgress)
     end
 end)
