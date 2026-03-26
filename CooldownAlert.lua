@@ -24,17 +24,6 @@ local GetContainerItemID = (C_Container and C_Container.GetContainerItemID) or G
 
 local OFFSET = 0.5
 
--- Returns true when v is a "secret" number (WoW Midnight): it exists but
--- cannot be compared with relational operators.  Such values are safe to
--- format with AbbreviatedNumberFormatter but not with string.format/math.max.
--- The type() guard ensures we only attempt comparison on actual numbers;
--- plain Lua numbers never raise errors on comparison unless they are secret.
-local function IsSecret(v)
-    if type(v) ~= "number" then return false end
-    local ok = pcall(function() return v > 0 end)
-    return not ok
-end
-
 -- Addon namespace shared with CooldownAlertSettings.lua
 CooldownAlert = CooldownAlert or {}
 
@@ -69,7 +58,7 @@ display.text:SetFont(display.text:GetFont(), 28, "OUTLINE")
 -- When remaining is a secret number (WoW Midnight) it cannot be compared,
 -- so fall back to the game's AbbreviatedNumberFormatter.
 local function FormatTime(remaining)
-    if IsSecret(remaining) then
+    if issecretvalue(remaining) then
         return AbbreviatedNumberFormatter(remaining)
     end
     local fmt = CooldownAlertDB and CooldownAlertDB.textFormat or "auto3"
@@ -150,19 +139,16 @@ eventFrame:SetScript("OnEvent", function(self, event, unit, _, spellID)
         activeItemID = nil
     end
 
-    -- Ignore GCD or very short cooldowns.  When duration is a secret number
-    -- the comparison would error, so we skip the filter and treat it as a
-    -- real (long enough) cooldown.
-    local ok, isShort = pcall(function() return not duration or duration <= 1.5 end)
-    if ok and isShort then return end
+    -- Ignore GCD or very short cooldowns.  Secret durations cannot be compared,
+    -- so skip the filter and treat them as real cooldowns worth showing.
+    if not issecretvalue(duration) and (not duration or duration <= 1.5) then return end
 
     local timeLeft = start + duration - GetTime()
 
-    -- Same guard for the timeLeft comparison.  When the value is secret we
-    -- cannot verify sign, but UNIT_SPELLCAST_FAILED only fires while the spell
-    -- is on cooldown, so treating an unreadable timeLeft as positive is safe.
-    local okOffset, isPositive = pcall(function() return timeLeft > OFFSET end)
-    if okOffset and not isPositive then return end
+    -- Skip the offset check when timeLeft is secret; the arithmetic on a secret
+    -- value produces another secret, and UNIT_SPELLCAST_FAILED only fires when
+    -- the spell is genuinely on cooldown so it is safe to show the alert.
+    if not issecretvalue(timeLeft) and timeLeft <= OFFSET then return end
 
     timeSinceTrigger = 0
     display:SetAlpha(1)
@@ -183,8 +169,8 @@ display:SetScript("OnUpdate", function(self, elapsed)
     if start and duration then
         local remaining = start + duration - GetTime()
         -- math.max requires comparison; skip the floor at 0 when remaining is secret
-        local okMax, floored = pcall(function() return math.max(0, remaining) end)
-        self.text:SetText(FormatTime(okMax and floored or remaining))
+        if not issecretvalue(remaining) then remaining = math.max(0, remaining) end
+        self.text:SetText(FormatTime(remaining))
     end
 
     -- Fade out using current saved values so changes take effect immediately
