@@ -166,7 +166,7 @@ display:SetScript("OnUpdate", function(self, elapsed)
         start, duration = GetSpellCD(activeSpellID)
     end
 
-    if start and duration then
+    if start and duration and not issecretvalue(start) and not issecretvalue(duration) then
         local remaining = start + duration - GetTime()
         -- math.max requires comparison; skip the floor at 0 when remaining is secret
         if not issecretvalue(remaining) then remaining = math.max(0, remaining) end
