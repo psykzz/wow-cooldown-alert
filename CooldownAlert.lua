@@ -120,29 +120,34 @@ eventFrame:SetScript("OnEvent", function(self, event, unit, _, spellID)
 
     if unit ~= "player" or not spellID then return end
 
-    --handle items
-    local itemId = item_spells[spellID]
-    local start, duration
+    -- Defer cooldown check to next frame to avoid taint from secret values
+    -- that are returned by GetSpellCooldown/GetItemCooldown during secure
+    -- execution (e.g. when UNIT_SPELLCAST_FAILED fires inside UseAction).
+    C_Timer.After(0, function()
+        -- Handle items
+        local itemId = item_spells[spellID]
+        local start, duration
 
-    if itemId then
-        start, duration = GetItemCD(itemId)
-        activeItemID = itemId
-        activeSpellID = nil
-    else
-        start, duration = GetSpellCD(spellID)
-        activeSpellID = spellID
-        activeItemID = nil
-    end
+        if itemId then
+            start, duration = GetItemCD(itemId)
+            activeItemID = itemId
+            activeSpellID = nil
+        else
+            start, duration = GetSpellCD(spellID)
+            activeSpellID = spellID
+            activeItemID = nil
+        end
 
-    -- ignore gcd or short cds
-    if not duration or duration <= 1.5 then return end
-    local timeLeft = start + duration - GetTime()
+        -- ignore gcd or short cds
+        if not duration or duration <= 1.5 then return end
+        local timeLeft = start + duration - GetTime()
 
-    if timeLeft > OFFSET then
-        timeSinceTrigger = 0
-        display:SetAlpha(1)
-        display:Show()
-    end
+        if timeLeft > OFFSET then
+            timeSinceTrigger = 0
+            display:SetAlpha(1)
+            display:Show()
+        end
+    end)
 end)
 
 display:SetScript("OnUpdate", function(self, elapsed)
