@@ -250,22 +250,18 @@ local function InitRetailSettings()
         local cycleTime = previewElapsed % PREVIEW_DURATION
         local remaining = PREVIEW_DURATION - cycleTime
 
-        self.text:SetText(CooldownAlert.FormatTime(remaining))
-
         local db          = CooldownAlertDB
         local holdTime    = (db and db.holdTime)    or CooldownAlertDB_Defaults.holdTime
         local fadeOutTime = (db and db.fadeOutTime) or CooldownAlertDB_Defaults.fadeOutTime
-        -- Alpha is driven by `remaining` (time until cycle end) so that the fade
-        -- happens near the end of the countdown, mirroring the real alert behaviour.
-        if fadeOutTime <= 0 then
-            self.text:SetAlpha(remaining > 0 and 1 or 0)
-        elseif remaining <= 0 then
-            self.text:SetAlpha(0)
-        elseif remaining <= fadeOutTime then
-            self.text:SetAlpha(remaining / fadeOutTime)
-        else
-            self.text:SetAlpha(1)
-        end
+        -- Map remaining countdown time to a simulated elapsed-since-trigger value so
+        -- that ComputeAlpha drives the preview fade identically to the real alert.
+        -- The "trigger" is treated as firing when remaining reaches totalVisible:
+        -- simElapsed = 0 at that point, rising to totalVisible as remaining → 0.
+        local totalVisible = holdTime + fadeOutTime
+        local simElapsed   = math.max(0, totalVisible - remaining)
+        -- or 1: when totalVisible == 0 ComputeAlpha returns nil; keep text visible.
+        CooldownAlert.UpdateElement(self, CooldownAlert.FormatTime(remaining),
+            CooldownAlert.ComputeAlpha(simElapsed, holdTime, fadeOutTime) or 1)
     end)
 
     -- ── Settings panel visibility hook ───────────────────────────────────────

@@ -80,6 +80,34 @@ end
 -- Expose FormatTime for use by the settings preview frame
 CooldownAlert.FormatTime = FormatTime
 
+-- Returns the display alpha (0.0–1.0) for the given elapsed time since the alert
+-- triggered, or nil when the alert has fully expired (frame should be hidden).
+-- Shared between the live display and the settings preview.
+local function ComputeAlpha(timeSinceTrigger, holdTime, fadeOutTime)
+    local totalDuration = holdTime + fadeOutTime
+    if timeSinceTrigger >= totalDuration then
+        return nil
+    elseif fadeOutTime > 0 and timeSinceTrigger > holdTime then
+        return 1 - (timeSinceTrigger - holdTime) / fadeOutTime
+    else
+        return 1
+    end
+end
+CooldownAlert.ComputeAlpha = ComputeAlpha
+
+-- Applies textContent and alpha to frame.text.  When alpha is nil the alert has
+-- expired: the text alpha is reset to 1 (ready for the next trigger) and the
+-- frame is hidden.  Shared between the live display and the settings preview.
+function CooldownAlert.UpdateElement(frame, textContent, alpha)
+    frame.text:SetText(textContent)
+    if alpha == nil then
+        frame.text:SetAlpha(1)
+        frame:Hide()
+    else
+        frame.text:SetAlpha(alpha)
+    end
+end
+
 -- Apply font and position settings from CooldownAlertDB to the display frame.
 -- Also refreshes CooldownAlert.previewFrame if it has been created by the settings module.
 function CooldownAlert.ApplySettings()
@@ -174,7 +202,8 @@ end)
 display:SetScript("OnUpdate", function(self, elapsed)
     timeSinceTrigger = timeSinceTrigger + elapsed
 
-    -- Update remaining time text
+    -- Compute the text to display for the active cooldown
+    local textContent = ""
     if activeSpellID then
         -- On WoW Midnight, use the proper secrets API to detect and render secret cooldowns.
         -- C_Secrets is nil on Classic/TBC, so isSecret will be false and the normal path runs.
@@ -182,12 +211,12 @@ display:SetScript("OnUpdate", function(self, elapsed)
         if isSecret then
             local info = C_Spell.GetSpellCooldown(activeSpellID)
             if info and info.startTime ~= 0 then
-                self.text:SetText(FormatRemainingDuration(info.duration))
+                textContent = FormatRemainingDuration(info.duration)
             end
         else
             local start, duration = GetSpellCD(activeSpellID)
             if start and duration then
-                self.text:SetText(FormatTime(math.max(0, start + duration - GetTime())))
+                textContent = FormatTime(math.max(0, start + duration - GetTime()))
             end
         end
     elseif activeItemID then
@@ -195,26 +224,19 @@ display:SetScript("OnUpdate", function(self, elapsed)
         if start and duration then
             if issecretvalue(duration) then
                 -- duration is a secret Duration Object; FormatRemainingDuration handles it safely.
-                self.text:SetText(FormatRemainingDuration(duration))
+                textContent = FormatRemainingDuration(duration)
             elseif issecretvalue(start) then
                 -- start is secret but duration is a plain number; approximate using elapsed time.
-                self.text:SetText(FormatTime(math.max(0, duration - timeSinceTrigger)))
+                textContent = FormatTime(math.max(0, duration - timeSinceTrigger))
             else
-                self.text:SetText(FormatTime(math.max(0, start + duration - GetTime())))
+                textContent = FormatTime(math.max(0, start + duration - GetTime()))
             end
         end
     end
 
-    -- Fade out using current saved values so changes take effect immediately
-    local db = CooldownAlertDB
+    -- Fade out and hide via the shared helper
+    local db          = CooldownAlertDB
     local holdTime    = db and db.holdTime    or CooldownAlertDB_Defaults.holdTime
     local fadeOutTime = db and db.fadeOutTime or CooldownAlertDB_Defaults.fadeOutTime
-    local totalDuration = holdTime + fadeOutTime
-
-    if timeSinceTrigger > totalDuration then
-        self:Hide()
-    elseif timeSinceTrigger > holdTime then
-        local fadeProgress = (timeSinceTrigger - holdTime) / fadeOutTime
-        self:SetAlpha(1 - fadeProgress)
-    end
+    CooldownAlert.UpdateElement(self, textContent, ComputeAlpha(timeSinceTrigger, holdTime, fadeOutTime))
 end)
