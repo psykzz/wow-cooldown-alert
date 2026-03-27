@@ -77,17 +77,29 @@ local function FormatTime(remaining)
     end
 end
 
--- Apply font and position settings from CooldownAlertDB to the display frame
+-- Expose FormatTime for use by the settings preview frame
+CooldownAlert.FormatTime = FormatTime
+
+-- Apply font and position settings from CooldownAlertDB to the display frame.
+-- Also refreshes CooldownAlert.previewFrame if it has been created by the settings module.
 function CooldownAlert.ApplySettings()
     local db = CooldownAlertDB
     if not db then return end
+    local x     = db.posX    or 0
+    local y     = db.posY    or 0
+    local face  = db.fontFace  or CooldownAlertDB_Defaults.fontFace
+    local size  = db.fontSize  or CooldownAlertDB_Defaults.fontSize
+    local flags = db.fontFlags or CooldownAlertDB_Defaults.fontFlags
+
     display:ClearAllPoints()
-    display:SetPoint("CENTER", UIParent, "CENTER", db.posX or 0, db.posY or 0)
-    display.text:SetFont(
-        db.fontFace  or CooldownAlertDB_Defaults.fontFace,
-        db.fontSize  or CooldownAlertDB_Defaults.fontSize,
-        db.fontFlags or CooldownAlertDB_Defaults.fontFlags
-    )
+    display:SetPoint("CENTER", UIParent, "CENTER", x, y)
+    display.text:SetFont(face, size, flags)
+
+    if CooldownAlert.previewFrame then
+        CooldownAlert.previewFrame:ClearAllPoints()
+        CooldownAlert.previewFrame:SetPoint("CENTER", UIParent, "CENTER", x, y)
+        CooldownAlert.previewFrame.text:SetFont(face, size, flags)
+    end
 end
 
 -- Initialise saved variables and apply settings on first load
