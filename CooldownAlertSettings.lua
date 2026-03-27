@@ -255,13 +255,14 @@ local function InitRetailSettings()
         local db          = CooldownAlertDB
         local holdTime    = (db and db.holdTime)    or CooldownAlertDB_Defaults.holdTime
         local fadeOutTime = (db and db.fadeOutTime) or CooldownAlertDB_Defaults.fadeOutTime
-        local totalVisible = holdTime + fadeOutTime
-        if totalVisible <= 0 then
-            self.text:SetAlpha(1)
-        elseif cycleTime > totalVisible then
+        -- Alpha is driven by `remaining` (time until cycle end) so that the fade
+        -- happens near the end of the countdown, mirroring the real alert behaviour.
+        if fadeOutTime <= 0 then
+            self.text:SetAlpha(remaining > 0 and 1 or 0)
+        elseif remaining <= 0 then
             self.text:SetAlpha(0)
-        elseif cycleTime > holdTime then
-            self.text:SetAlpha(1 - (cycleTime - holdTime) / fadeOutTime)
+        elseif remaining <= fadeOutTime then
+            self.text:SetAlpha(remaining / fadeOutTime)
         else
             self.text:SetAlpha(1)
         end
