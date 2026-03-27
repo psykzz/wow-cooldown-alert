@@ -61,7 +61,10 @@ local function InitRetailSettings()
     local holdTimeSetting = Proxy(
         "holdTime", Settings.VarType.Number, "Hold Time",
         function()    return CooldownAlertDB.holdTime end,
-        function(_, v) CooldownAlertDB.holdTime = v   end
+        function(_, v)
+            if v == nil then return end
+            CooldownAlertDB.holdTime = v
+        end
     )
     local holdTimeOpts = Settings.CreateSliderOptions(0, 2, 0.05)
     holdTimeOpts:SetLabelFormatter(
@@ -75,7 +78,10 @@ local function InitRetailSettings()
     local fadeOutSetting = Proxy(
         "fadeOutTime", Settings.VarType.Number, "Fade Out Time",
         function()    return CooldownAlertDB.fadeOutTime end,
-        function(_, v) CooldownAlertDB.fadeOutTime = v   end
+        function(_, v)
+            if v == nil then return end
+            CooldownAlertDB.fadeOutTime = v
+        end
     )
     local fadeOutOpts = Settings.CreateSliderOptions(0, 3, 0.1)
     fadeOutOpts:SetLabelFormatter(
@@ -108,6 +114,7 @@ local function InitRetailSettings()
         "fontFace", Settings.VarType.String, "Font",
         function()    return CooldownAlertDB.fontFace end,
         function(_, v)
+            if v == nil then return end
             CooldownAlertDB.fontFace = v
             CooldownAlert.ApplySettings()
         end
@@ -125,6 +132,7 @@ local function InitRetailSettings()
         "fontFlags", Settings.VarType.String, "Font Style",
         function()    return CooldownAlertDB.fontFlags end,
         function(_, v)
+            if v == nil then return end
             CooldownAlertDB.fontFlags = v
             CooldownAlert.ApplySettings()
         end
@@ -177,7 +185,10 @@ local function InitRetailSettings()
     local textFormatSetting = Proxy(
         "textFormat", Settings.VarType.String, "Text Format",
         function()    return CooldownAlertDB.textFormat end,
-        function(_, v) CooldownAlertDB.textFormat = v end
+        function(_, v)
+            if v == nil then return end
+            CooldownAlertDB.textFormat = v
+        end
     )
     local function GetTextFormatOptions()
         local container = Settings.CreateControlTextContainer()
@@ -188,6 +199,96 @@ local function InitRetailSettings()
         "How the remaining cooldown time is displayed")
 
     Settings.RegisterAddOnCategory(category)
+
+    -- ── Preview frame ────────────────────────────────────────────────────────
+    -- Shown (at the configured screen position) while the Cooldown Alert settings
+    -- panel is open so changes to font, size and position are visible immediately.
+
+    local previewFrame = CreateFrame("Frame", "CooldownAlertPreviewFrame", UIParent)
+    previewFrame:SetSize(250, 70)
+    previewFrame:SetFrameStrata("HIGH")
+    previewFrame:Hide()
+
+    local bg = previewFrame:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints()
+    bg:SetColorTexture(0, 0, 0, 0.55)
+
+    previewFrame.text = previewFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    previewFrame.text:SetPoint("CENTER", 0, 8)
+    previewFrame.text:SetTextColor(1, 1, 1)
+
+    local previewLabel = previewFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    previewLabel:SetPoint("TOPLEFT", 6, -4)
+    previewLabel:SetText("|cffaaaaaa[Preview]|r")
+
+    -- Apply & Reload UI button sits at the bottom of the preview frame
+    local applyBtn = CreateFrame("Button", "CooldownAlertApplyButton", previewFrame, "UIPanelButtonTemplate")
+    applyBtn:SetSize(200, 22)
+    applyBtn:SetPoint("BOTTOM", previewFrame, "BOTTOM", 0, 4)
+    applyBtn:SetText("Apply & Reload UI")
+    applyBtn:SetScript("OnClick", function() ReloadUI() end)
+
+    -- Expose the preview frame so CooldownAlert.ApplySettings can reposition/re-font it
+    CooldownAlert.previewFrame = previewFrame
+
+    -- Looping 5-second countdown that mirrors the real alert behaviour
+    local PREVIEW_DURATION = 5
+    local previewElapsed   = 0
+    previewFrame:SetScript("OnUpdate", function(self, elapsed)
+        previewElapsed = previewElapsed + elapsed
+        local cycleTime = previewElapsed % PREVIEW_DURATION
+        local remaining = PREVIEW_DURATION - cycleTime
+
+        self.text:SetText(CooldownAlert.FormatTime(remaining))
+
+        local db          = CooldownAlertDB
+        local holdTime    = (db and db.holdTime)    or CooldownAlertDB_Defaults.holdTime
+        local fadeOutTime = (db and db.fadeOutTime) or CooldownAlertDB_Defaults.fadeOutTime
+        local totalVisible = holdTime + fadeOutTime
+        if totalVisible <= 0 then
+            self.text:SetAlpha(1)
+        elseif cycleTime > totalVisible then
+            self.text:SetAlpha(0)
+        elseif cycleTime > holdTime then
+            self.text:SetAlpha(1 - (cycleTime - holdTime) / fadeOutTime)
+        else
+            self.text:SetAlpha(1)
+        end
+    end)
+
+    -- ── Settings panel visibility hook ───────────────────────────────────────
+    -- Show the preview while our category is the active one.
+    local function RefreshPreviewVisibility()
+        local isOurCategory = SettingsPanel
+            and SettingsPanel:IsShown()
+            and SettingsPanel.GetCurrentCategory
+            and SettingsPanel:GetCurrentCategory() == category
+
+        if isOurCategory then
+            local db = CooldownAlertDB
+            local x  = (db and db.posX) or 0
+            local y  = (db and db.posY) or 0
+            previewFrame:ClearAllPoints()
+            previewFrame:SetPoint("CENTER", UIParent, "CENTER", x, y)
+            previewFrame.text:SetFont(
+                (db and db.fontFace)  or CooldownAlertDB_Defaults.fontFace,
+                (db and db.fontSize)  or CooldownAlertDB_Defaults.fontSize,
+                (db and db.fontFlags) or CooldownAlertDB_Defaults.fontFlags
+            )
+            previewFrame:Show()
+        else
+            previewFrame:Hide()
+        end
+    end
+
+    if SettingsPanel then
+        SettingsPanel:HookScript("OnShow", RefreshPreviewVisibility)
+        SettingsPanel:HookScript("OnHide", function() previewFrame:Hide() end)
+        if SettingsPanel.SetCurrentCategory then
+            hooksecurefunc(SettingsPanel, "SetCurrentCategory", RefreshPreviewVisibility)
+        end
+    end
+
     return true
 end
 
