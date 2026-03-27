@@ -187,10 +187,12 @@ eventFrame:SetScript("OnEvent", function(self, event, unit, _, spellID)
     -- so skip the filter and treat them as real cooldowns worth showing.
     if not issecretvalue(duration) and (not duration or duration <= 1.5) then return end
 
-    -- In protected execution contexts (e.g. triggered by UseAction in a secure frame),
-    -- arithmetic on secret values throws an error instead of producing a secret result.
-    -- When either start or duration is secret, skip all arithmetic and show the alert
-    -- immediately; UNIT_SPELLCAST_FAILED already confirms the cooldown is genuine.
+    -- WoW Midnight secret values are an anti-cheat mechanism: certain cooldown
+    -- start/duration values are intentionally hidden from addons.  Unlike UI taint,
+    -- this has nothing to do with the secure-frame execution context -- arithmetic on
+    -- a secret value always throws a Lua error.  When either value is secret, skip
+    -- all arithmetic and show the alert immediately; UNIT_SPELLCAST_FAILED only fires
+    -- when the spell is genuinely on cooldown so it is safe to do so.
     if issecretvalue(start) or issecretvalue(duration) then
         timeSinceTrigger = 0
         display:SetAlpha(1)
