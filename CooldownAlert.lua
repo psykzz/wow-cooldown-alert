@@ -187,12 +187,20 @@ eventFrame:SetScript("OnEvent", function(self, event, unit, _, spellID)
     -- so skip the filter and treat them as real cooldowns worth showing.
     if not issecretvalue(duration) and (not duration or duration <= 1.5) then return end
 
+    -- In protected execution contexts (e.g. triggered by UseAction in a secure frame),
+    -- arithmetic on secret values throws an error instead of producing a secret result.
+    -- When either start or duration is secret, skip all arithmetic and show the alert
+    -- immediately; UNIT_SPELLCAST_FAILED already confirms the cooldown is genuine.
+    if issecretvalue(start) or issecretvalue(duration) then
+        timeSinceTrigger = 0
+        display:SetAlpha(1)
+        display:Show()
+        return
+    end
+
     local timeLeft = start + duration - GetTime()
 
-    -- Skip the offset check when timeLeft is secret; the arithmetic on a secret
-    -- value produces another secret, and UNIT_SPELLCAST_FAILED only fires when
-    -- the spell is genuinely on cooldown so it is safe to show the alert.
-    if not issecretvalue(timeLeft) and timeLeft <= OFFSET then return end
+    if timeLeft <= OFFSET then return end
 
     timeSinceTrigger = 0
     display:SetAlpha(1)
