@@ -1,4 +1,3 @@
-
 local GetSpellCD = function(spellID)
     if C_Spell and C_Spell.GetSpellCooldown then
         local cd = C_Spell.GetSpellCooldown(spellID)
@@ -21,10 +20,11 @@ end
 
 local GetContainerNumSlots = (C_Container and C_Container.GetContainerNumSlots) or GetContainerNumSlots
 local GetContainerItemID = (C_Container and C_Container.GetContainerItemID) or GetContainerItemID
+local GetItemSpell = (C_Item and C_Item.GetItemSpell) or GetItemSpell
 
 -- WoW Midnight-only APIs; provide safe no-op shims for Classic/TBC/pre-Midnight retail.
 local issecretvalue = issecretvalue or function() return false end
-local FormatRemainingDuration = FormatRemainingDuration or tostring
+local FormatRemainingDuration = FormatRemainingDuration or C_StringUtil.TruncateWhenZero or tostring
 
 local OFFSET = 0.5
 
@@ -33,14 +33,14 @@ CooldownAlert = CooldownAlert or {}
 
 -- Default values used for first-time initialization and Settings API defaults
 CooldownAlertDB_Defaults = {
-    holdTime     = 0.3,
-    fadeOutTime  = 0.7,
-    fontSize     = 28,
-    fontFace     = "Fonts\\FRIZQT__.TTF",
-    fontFlags    = "OUTLINE",
-    posX         = 0,
-    posY         = 0,
-    textFormat   = "auto3",
+    holdTime    = 0.3,
+    fadeOutTime = 0.7,
+    fontSize    = 28,
+    fontFace    = "Fonts\\FRIZQT__.TTF",
+    fontFlags   = "OUTLINE",
+    posX        = 0,
+    posY        = 0,
+    textFormat  = "auto3",
 }
 
 local item_spells = {}
@@ -61,10 +61,12 @@ display.text:SetFont(display.text:GetFont(), 28, "OUTLINE")
 -- Format remaining seconds according to the saved textFormat setting.
 -- When remaining is a secret Duration Object (WoW Midnight) it cannot be compared,
 -- so use FormatRemainingDuration which is designed for secret Duration Objects.
-local function FormatTime(remaining)
-    if issecretvalue(remaining) then
-        return FormatRemainingDuration(remaining)
+local function FormatTime(startTime, duration, spellId, itemSpellId)
+    if issecretvalue(duration) then
+        return FormatRemainingDuration(C_Spell.GetSpellCooldownDuration(spellId):GetRemainingDuration(Enum
+            .DurationTimeModifier.RealTime))
     end
+    local remaining = math.max(0, startTime + duration - GetTime())
     local fmt = CooldownAlertDB and CooldownAlertDB.textFormat or "auto3"
     if fmt == "auto1" then
         return remaining > 1 and string.format("%.0fs", remaining) or string.format("%.1fs", remaining)
@@ -113,10 +115,10 @@ end
 function CooldownAlert.ApplySettings()
     local db = CooldownAlertDB
     if not db then return end
-    local x     = db.posX    or 0
-    local y     = db.posY    or 0
-    local face  = db.fontFace  or CooldownAlertDB_Defaults.fontFace
-    local size  = db.fontSize  or CooldownAlertDB_Defaults.fontSize
+    local x     = db.posX or 0
+    local y     = db.posY or 0
+    local face  = db.fontFace or CooldownAlertDB_Defaults.fontFace
+    local size  = db.fontSize or CooldownAlertDB_Defaults.fontSize
     local flags = db.fontFlags or CooldownAlertDB_Defaults.fontFlags
 
     display:ClearAllPoints()
@@ -168,7 +170,7 @@ eventFrame:SetScript("OnEvent", function(self, event, unit, _, spellID)
     end
 
     if unit ~= "player" or not spellID then return end
-
+    timeSinceTrigger = 0
     -- Handle items
     local itemId = item_spells[spellID]
     local start, duration
@@ -183,28 +185,17 @@ eventFrame:SetScript("OnEvent", function(self, event, unit, _, spellID)
         activeItemID = nil
     end
 
-    -- Ignore GCD or very short cooldowns.  Secret durations cannot be compared,
-    -- so skip the filter and treat them as real cooldowns worth showing.
-    if not issecretvalue(duration) and (not duration or duration <= 1.5) then return end
-
-    -- WoW Midnight secret values are an anti-cheat mechanism: certain cooldown
-    -- start/duration values are intentionally hidden from addons.  Unlike UI taint,
-    -- this has nothing to do with the secure-frame execution context -- arithmetic on
-    -- a secret value always throws a Lua error.  When either value is secret, skip
-    -- all arithmetic and show the alert immediately; UNIT_SPELLCAST_FAILED only fires
-    -- when the spell is genuinely on cooldown so it is safe to do so.
     if issecretvalue(start) or issecretvalue(duration) then
-        timeSinceTrigger = 0
         display:SetAlpha(1)
         display:Show()
         return
     end
 
-    local timeLeft = start + duration - GetTime()
+    if not issecretvalue(duration) and (not duration or duration <= 1.5) then return end
 
+    local timeLeft = start + duration - GetTime()
     if timeLeft <= OFFSET then return end
 
-    timeSinceTrigger = 0
     display:SetAlpha(1)
     display:Show()
 end)
@@ -215,38 +206,16 @@ display:SetScript("OnUpdate", function(self, elapsed)
     -- Compute the text to display for the active cooldown
     local textContent = ""
     if activeSpellID then
-        -- On WoW Midnight, use the proper secrets API to detect and render secret cooldowns.
-        -- C_Secrets is nil on Classic/TBC, so isSecret will be false and the normal path runs.
-        local isSecret = C_Secrets and C_Secrets.ShouldSpellCooldownBeSecret and C_Secrets.ShouldSpellCooldownBeSecret(activeSpellID)
-        if isSecret then
-            local info = C_Spell.GetSpellCooldown(activeSpellID)
-            if info and info.startTime ~= 0 then
-                textContent = FormatRemainingDuration(info.duration)
-            end
-        else
-            local start, duration = GetSpellCD(activeSpellID)
-            if start and duration then
-                textContent = FormatTime(math.max(0, start + duration - GetTime()))
-            end
-        end
+        local startTime, duration = GetSpellCD(activeSpellID)
+        textContent = FormatTime(startTime, duration, activeSpellID)
     elseif activeItemID then
-        local start, duration = GetItemCD(activeItemID)
-        if start and duration then
-            if issecretvalue(duration) then
-                -- duration is a secret Duration Object; FormatRemainingDuration handles it safely.
-                textContent = FormatRemainingDuration(duration)
-            elseif issecretvalue(start) then
-                -- start is secret but duration is a plain number; approximate using elapsed time.
-                textContent = FormatTime(math.max(0, duration - timeSinceTrigger))
-            else
-                textContent = FormatTime(math.max(0, start + duration - GetTime()))
-            end
-        end
+        local startTime, duration = GetItemCD(activeItemID)
+        textContent = FormatTime(startTime, duration, nil, activeItemID)
     end
 
     -- Fade out and hide via the shared helper
     local db          = CooldownAlertDB
-    local holdTime    = db and db.holdTime    or CooldownAlertDB_Defaults.holdTime
+    local holdTime    = db and db.holdTime or CooldownAlertDB_Defaults.holdTime
     local fadeOutTime = db and db.fadeOutTime or CooldownAlertDB_Defaults.fadeOutTime
     CooldownAlert.UpdateElement(self, textContent, ComputeAlpha(timeSinceTrigger, holdTime, fadeOutTime))
 end)
