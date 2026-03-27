@@ -48,7 +48,23 @@ local function InitRetailSettings()
     -- Reset to 0 whenever a setting changes so the countdown restarts from the top.
     local previewElapsed = 0
 
-    -- Helper: register a proxy setting backed by CooldownAlertDB[varKey]
+    -- previewValues holds in-progress changes while the settings panel is open.
+    -- Changes are reflected in the preview immediately but are NOT written to
+    -- CooldownAlertDB until the user clicks "Apply & Reload".
+    local previewValues = {}
+    -- previewFrame is created later in this function; forward-declared here so
+    -- the proxy setter callbacks (defined before the frame) can reference it.
+    local previewFrame
+
+    local function InitPreviewValues()
+        local db = CooldownAlertDB
+        for k, v in pairs(CooldownAlertDB_Defaults) do
+            previewValues[k] = (db and db[k] ~= nil) and db[k] or v
+        end
+    end
+    InitPreviewValues()
+
+    -- Helper: register a proxy setting backed by previewValues[varKey]
     local function Proxy(varKey, varType, name, getValue, setValue)
         return Settings.RegisterProxySetting(
             category,
@@ -64,10 +80,10 @@ local function InitRetailSettings()
     -- Hold Time (0 – 2 s, step 0.05)
     local holdTimeSetting = Proxy(
         "holdTime", Settings.VarType.Number, "Hold Time",
-        function()    return CooldownAlertDB.holdTime end,
+        function()    return previewValues.holdTime end,
         function(_, v)
             if v == nil then return end
-            CooldownAlertDB.holdTime = v
+            previewValues.holdTime = v
             previewElapsed = 0
         end
     )
@@ -82,10 +98,10 @@ local function InitRetailSettings()
     -- Fade Out Time (0 – 3 s, step 0.1)
     local fadeOutSetting = Proxy(
         "fadeOutTime", Settings.VarType.Number, "Fade Out Time",
-        function()    return CooldownAlertDB.fadeOutTime end,
+        function()    return previewValues.fadeOutTime end,
         function(_, v)
             if v == nil then return end
-            CooldownAlertDB.fadeOutTime = v
+            previewValues.fadeOutTime = v
             previewElapsed = 0
         end
     )
@@ -100,12 +116,17 @@ local function InitRetailSettings()
     -- Font Size (10 – 72, step 1)
     local fontSizeSetting = Proxy(
         "fontSize", Settings.VarType.Number, "Font Size",
-        function()    return CooldownAlertDB.fontSize end,
+        function()    return previewValues.fontSize end,
         function(_, v)
             if v == nil then return end
-            CooldownAlertDB.fontSize = math.floor(v)
-            CooldownAlert.ApplySettings()
+            previewValues.fontSize = math.floor(v)
             previewElapsed = 0
+            if previewFrame then
+                previewFrame.text:SetFont(
+                    previewValues.fontFace  or CooldownAlertDB_Defaults.fontFace,
+                    previewValues.fontSize,
+                    previewValues.fontFlags or CooldownAlertDB_Defaults.fontFlags)
+            end
         end
     )
     local fontSizeOpts = Settings.CreateSliderOptions(10, 72, 1)
@@ -119,12 +140,17 @@ local function InitRetailSettings()
     -- Font Face (dropdown)
     local fontFaceSetting = Proxy(
         "fontFace", Settings.VarType.String, "Font",
-        function()    return CooldownAlertDB.fontFace end,
+        function()    return previewValues.fontFace end,
         function(_, v)
             if v == nil then return end
-            CooldownAlertDB.fontFace = v
-            CooldownAlert.ApplySettings()
+            previewValues.fontFace = v
             previewElapsed = 0
+            if previewFrame then
+                previewFrame.text:SetFont(
+                    previewValues.fontFace,
+                    previewValues.fontSize  or CooldownAlertDB_Defaults.fontSize,
+                    previewValues.fontFlags or CooldownAlertDB_Defaults.fontFlags)
+            end
         end
     )
     local function GetFontOptions()
@@ -138,12 +164,17 @@ local function InitRetailSettings()
     -- Font Style (dropdown)
     local fontFlagsSetting = Proxy(
         "fontFlags", Settings.VarType.String, "Font Style",
-        function()    return CooldownAlertDB.fontFlags end,
+        function()    return previewValues.fontFlags end,
         function(_, v)
             if v == nil then return end
-            CooldownAlertDB.fontFlags = v
-            CooldownAlert.ApplySettings()
+            previewValues.fontFlags = v
             previewElapsed = 0
+            if previewFrame then
+                previewFrame.text:SetFont(
+                    previewValues.fontFace  or CooldownAlertDB_Defaults.fontFace,
+                    previewValues.fontSize  or CooldownAlertDB_Defaults.fontSize,
+                    previewValues.fontFlags)
+            end
         end
     )
     local function GetFontFlagOptions()
@@ -157,12 +188,16 @@ local function InitRetailSettings()
     -- Horizontal Position (-500 – 500, step 1)
     local posXSetting = Proxy(
         "posX", Settings.VarType.Number, "Horizontal Position",
-        function()    return CooldownAlertDB.posX end,
+        function()    return previewValues.posX end,
         function(_, v)
             if v == nil then return end
-            CooldownAlertDB.posX = math.floor(v)
-            CooldownAlert.ApplySettings()
+            previewValues.posX = math.floor(v)
             previewElapsed = 0
+            if previewFrame then
+                previewFrame:ClearAllPoints()
+                previewFrame:SetPoint("CENTER", UIParent, "CENTER",
+                    previewValues.posX, previewValues.posY or 0)
+            end
         end
     )
     local posXOpts = Settings.CreateSliderOptions(-500, 500, 1)
@@ -176,12 +211,16 @@ local function InitRetailSettings()
     -- Vertical Position (-500 – 500, step 1)
     local posYSetting = Proxy(
         "posY", Settings.VarType.Number, "Vertical Position",
-        function()    return CooldownAlertDB.posY end,
+        function()    return previewValues.posY end,
         function(_, v)
             if v == nil then return end
-            CooldownAlertDB.posY = math.floor(v)
-            CooldownAlert.ApplySettings()
+            previewValues.posY = math.floor(v)
             previewElapsed = 0
+            if previewFrame then
+                previewFrame:ClearAllPoints()
+                previewFrame:SetPoint("CENTER", UIParent, "CENTER",
+                    previewValues.posX or 0, previewValues.posY)
+            end
         end
     )
     local posYOpts = Settings.CreateSliderOptions(-500, 500, 1)
@@ -195,10 +234,10 @@ local function InitRetailSettings()
     -- Text Format (dropdown)
     local textFormatSetting = Proxy(
         "textFormat", Settings.VarType.String, "Text Format",
-        function()    return CooldownAlertDB.textFormat end,
+        function()    return previewValues.textFormat end,
         function(_, v)
             if v == nil then return end
-            CooldownAlertDB.textFormat = v
+            previewValues.textFormat = v
             previewElapsed = 0
         end
     )
@@ -216,7 +255,7 @@ local function InitRetailSettings()
     -- Shown (at the configured screen position) while the Cooldown Alert settings
     -- panel is open so changes to font, size and position are visible immediately.
 
-    local previewFrame = CreateFrame("Frame", "CooldownAlertPreviewFrame", UIParent)
+    previewFrame = CreateFrame("Frame", "CooldownAlertPreviewFrame", UIParent)
     previewFrame:SetSize(250, 70)
     previewFrame:SetFrameStrata("HIGH")
     previewFrame:Hide()
@@ -238,7 +277,16 @@ local function InitRetailSettings()
     applyBtn:SetSize(200, 22)
     applyBtn:SetPoint("BOTTOM", previewFrame, "BOTTOM", 0, 4)
     applyBtn:SetText("Apply & Reload UI")
-    applyBtn:SetScript("OnClick", function() ReloadUI() end)
+    applyBtn:SetScript("OnClick", function()
+        -- Commit the in-progress preview values to the saved database, then
+        -- reload so the main display frame picks up the new settings.
+        if CooldownAlertDB then
+            for k in pairs(CooldownAlertDB_Defaults) do
+                CooldownAlertDB[k] = previewValues[k]
+            end
+        end
+        ReloadUI()
+    end)
 
     -- Expose the preview frame so CooldownAlert.ApplySettings can reposition/re-font it
     CooldownAlert.previewFrame = previewFrame
@@ -250,9 +298,8 @@ local function InitRetailSettings()
         local cycleTime = previewElapsed % PREVIEW_DURATION
         local remaining = PREVIEW_DURATION - cycleTime
 
-        local db          = CooldownAlertDB
-        local holdTime    = (db and db.holdTime)    or CooldownAlertDB_Defaults.holdTime
-        local fadeOutTime = (db and db.fadeOutTime) or CooldownAlertDB_Defaults.fadeOutTime
+        local holdTime    = previewValues.holdTime    or CooldownAlertDB_Defaults.holdTime
+        local fadeOutTime = previewValues.fadeOutTime or CooldownAlertDB_Defaults.fadeOutTime
         -- Map remaining countdown time to a simulated elapsed-since-trigger value so
         -- that ComputeAlpha drives the preview fade identically to the real alert.
         -- The "trigger" is treated as firing when remaining reaches totalVisible:
@@ -273,15 +320,17 @@ local function InitRetailSettings()
             and SettingsPanel:GetCurrentCategory() == category
 
         if isOurCategory then
-            local db = CooldownAlertDB
-            local x  = (db and db.posX) or 0
-            local y  = (db and db.posY) or 0
+            -- Re-initialise preview values from the database each time the panel
+            -- is (re-)opened so unsaved changes from a previous visit are discarded.
+            InitPreviewValues()
+            local x  = previewValues.posX or 0
+            local y  = previewValues.posY or 0
             previewFrame:ClearAllPoints()
             previewFrame:SetPoint("CENTER", UIParent, "CENTER", x, y)
             previewFrame.text:SetFont(
-                (db and db.fontFace)  or CooldownAlertDB_Defaults.fontFace,
-                (db and db.fontSize)  or CooldownAlertDB_Defaults.fontSize,
-                (db and db.fontFlags) or CooldownAlertDB_Defaults.fontFlags
+                previewValues.fontFace  or CooldownAlertDB_Defaults.fontFace,
+                previewValues.fontSize  or CooldownAlertDB_Defaults.fontSize,
+                previewValues.fontFlags or CooldownAlertDB_Defaults.fontFlags
             )
             previewFrame:Show()
         else
@@ -291,7 +340,12 @@ local function InitRetailSettings()
 
     if SettingsPanel then
         SettingsPanel:HookScript("OnShow", RefreshPreviewVisibility)
-        SettingsPanel:HookScript("OnHide", function() previewFrame:Hide() end)
+        SettingsPanel:HookScript("OnHide", function()
+            previewFrame:Hide()
+            -- Discard any unsaved preview changes so the next visit shows the
+            -- last-applied (database) values.
+            InitPreviewValues()
+        end)
         if SettingsPanel.SetCurrentCategory then
             hooksecurefunc(SettingsPanel, "SetCurrentCategory", RefreshPreviewVisibility)
         end
