@@ -44,6 +44,10 @@ local function InitRetailSettings()
 
     local category = Settings.RegisterVerticalLayoutCategory("Cooldown Alert")
 
+    -- Tracks elapsed time in the looping preview countdown.
+    -- Reset to 0 whenever a setting changes so the countdown restarts from the top.
+    local previewElapsed = 0
+
     -- Helper: register a proxy setting backed by CooldownAlertDB[varKey]
     local function Proxy(varKey, varType, name, getValue, setValue)
         return Settings.RegisterProxySetting(
@@ -64,6 +68,7 @@ local function InitRetailSettings()
         function(_, v)
             if v == nil then return end
             CooldownAlertDB.holdTime = v
+            previewElapsed = 0
         end
     )
     local holdTimeOpts = Settings.CreateSliderOptions(0, 2, 0.05)
@@ -81,6 +86,7 @@ local function InitRetailSettings()
         function(_, v)
             if v == nil then return end
             CooldownAlertDB.fadeOutTime = v
+            previewElapsed = 0
         end
     )
     local fadeOutOpts = Settings.CreateSliderOptions(0, 3, 0.1)
@@ -99,6 +105,7 @@ local function InitRetailSettings()
             if v == nil then return end
             CooldownAlertDB.fontSize = math.floor(v)
             CooldownAlert.ApplySettings()
+            previewElapsed = 0
         end
     )
     local fontSizeOpts = Settings.CreateSliderOptions(10, 72, 1)
@@ -117,6 +124,7 @@ local function InitRetailSettings()
             if v == nil then return end
             CooldownAlertDB.fontFace = v
             CooldownAlert.ApplySettings()
+            previewElapsed = 0
         end
     )
     local function GetFontOptions()
@@ -135,6 +143,7 @@ local function InitRetailSettings()
             if v == nil then return end
             CooldownAlertDB.fontFlags = v
             CooldownAlert.ApplySettings()
+            previewElapsed = 0
         end
     )
     local function GetFontFlagOptions()
@@ -153,6 +162,7 @@ local function InitRetailSettings()
             if v == nil then return end
             CooldownAlertDB.posX = math.floor(v)
             CooldownAlert.ApplySettings()
+            previewElapsed = 0
         end
     )
     local posXOpts = Settings.CreateSliderOptions(-500, 500, 1)
@@ -171,6 +181,7 @@ local function InitRetailSettings()
             if v == nil then return end
             CooldownAlertDB.posY = math.floor(v)
             CooldownAlert.ApplySettings()
+            previewElapsed = 0
         end
     )
     local posYOpts = Settings.CreateSliderOptions(-500, 500, 1)
@@ -188,6 +199,7 @@ local function InitRetailSettings()
         function(_, v)
             if v == nil then return end
             CooldownAlertDB.textFormat = v
+            previewElapsed = 0
         end
     )
     local function GetTextFormatOptions()
@@ -233,7 +245,6 @@ local function InitRetailSettings()
 
     -- Looping 5-second countdown that mirrors the real alert behaviour
     local PREVIEW_DURATION = 5
-    local previewElapsed   = 0
     previewFrame:SetScript("OnUpdate", function(self, elapsed)
         previewElapsed = previewElapsed + elapsed
         local cycleTime = previewElapsed % PREVIEW_DURATION
