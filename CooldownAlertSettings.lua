@@ -44,6 +44,10 @@ local function InitRetailSettings()
 
     local category = Settings.RegisterVerticalLayoutCategory("Cooldown Alert")
 
+    -- Tracks elapsed time in the looping preview countdown.
+    -- Reset to 0 whenever a setting changes so the countdown restarts from the top.
+    local previewElapsed = 0
+
     -- Helper: register a proxy setting backed by CooldownAlertDB[varKey]
     local function Proxy(varKey, varType, name, getValue, setValue)
         return Settings.RegisterProxySetting(
@@ -64,6 +68,7 @@ local function InitRetailSettings()
         function(_, v)
             if v == nil then return end
             CooldownAlertDB.holdTime = v
+            previewElapsed = 0
         end
     )
     local holdTimeOpts = Settings.CreateSliderOptions(0, 2, 0.05)
@@ -81,6 +86,7 @@ local function InitRetailSettings()
         function(_, v)
             if v == nil then return end
             CooldownAlertDB.fadeOutTime = v
+            previewElapsed = 0
         end
     )
     local fadeOutOpts = Settings.CreateSliderOptions(0, 3, 0.1)
@@ -99,6 +105,7 @@ local function InitRetailSettings()
             if v == nil then return end
             CooldownAlertDB.fontSize = math.floor(v)
             CooldownAlert.ApplySettings()
+            previewElapsed = 0
         end
     )
     local fontSizeOpts = Settings.CreateSliderOptions(10, 72, 1)
@@ -117,6 +124,7 @@ local function InitRetailSettings()
             if v == nil then return end
             CooldownAlertDB.fontFace = v
             CooldownAlert.ApplySettings()
+            previewElapsed = 0
         end
     )
     local function GetFontOptions()
@@ -135,6 +143,7 @@ local function InitRetailSettings()
             if v == nil then return end
             CooldownAlertDB.fontFlags = v
             CooldownAlert.ApplySettings()
+            previewElapsed = 0
         end
     )
     local function GetFontFlagOptions()
@@ -153,6 +162,7 @@ local function InitRetailSettings()
             if v == nil then return end
             CooldownAlertDB.posX = math.floor(v)
             CooldownAlert.ApplySettings()
+            previewElapsed = 0
         end
     )
     local posXOpts = Settings.CreateSliderOptions(-500, 500, 1)
@@ -171,6 +181,7 @@ local function InitRetailSettings()
             if v == nil then return end
             CooldownAlertDB.posY = math.floor(v)
             CooldownAlert.ApplySettings()
+            previewElapsed = 0
         end
     )
     local posYOpts = Settings.CreateSliderOptions(-500, 500, 1)
@@ -188,6 +199,7 @@ local function InitRetailSettings()
         function(_, v)
             if v == nil then return end
             CooldownAlertDB.textFormat = v
+            previewElapsed = 0
         end
     )
     local function GetTextFormatOptions()
@@ -233,27 +245,23 @@ local function InitRetailSettings()
 
     -- Looping 5-second countdown that mirrors the real alert behaviour
     local PREVIEW_DURATION = 5
-    local previewElapsed   = 0
     previewFrame:SetScript("OnUpdate", function(self, elapsed)
         previewElapsed = previewElapsed + elapsed
         local cycleTime = previewElapsed % PREVIEW_DURATION
         local remaining = PREVIEW_DURATION - cycleTime
 
-        self.text:SetText(CooldownAlert.FormatTime(remaining))
-
         local db          = CooldownAlertDB
         local holdTime    = (db and db.holdTime)    or CooldownAlertDB_Defaults.holdTime
         local fadeOutTime = (db and db.fadeOutTime) or CooldownAlertDB_Defaults.fadeOutTime
+        -- Map remaining countdown time to a simulated elapsed-since-trigger value so
+        -- that ComputeAlpha drives the preview fade identically to the real alert.
+        -- The "trigger" is treated as firing when remaining reaches totalVisible:
+        -- simElapsed = 0 at that point, rising to totalVisible as remaining → 0.
         local totalVisible = holdTime + fadeOutTime
-        if totalVisible <= 0 then
-            self.text:SetAlpha(1)
-        elseif cycleTime > totalVisible then
-            self.text:SetAlpha(0)
-        elseif cycleTime > holdTime then
-            self.text:SetAlpha(1 - (cycleTime - holdTime) / fadeOutTime)
-        else
-            self.text:SetAlpha(1)
-        end
+        local simElapsed   = math.max(0, totalVisible - remaining)
+        -- or 1: when totalVisible == 0 ComputeAlpha returns nil; keep text visible.
+        CooldownAlert.UpdateElement(self, CooldownAlert.FormatTime(remaining),
+            CooldownAlert.ComputeAlpha(simElapsed, holdTime, fadeOutTime) or 1)
     end)
 
     -- ── Settings panel visibility hook ───────────────────────────────────────
