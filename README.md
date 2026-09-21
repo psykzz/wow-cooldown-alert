@@ -13,10 +13,10 @@ The addon is split into small, single-purpose modules, loaded in this order (see
 
 - `Libs/PsyUtils/` - reusable helpers shared across PsyKzz's addons.
 - `Core/` - constants, client-capability detection, API compat wrappers, bag cache, and settings persistence.
-- `UI/` - the on-screen cooldown text/icon display and the settings preview frame.
+- `UI/` - the on-screen cooldown text/icon display.
 - `Core/Bootstrap.lua` / `Core/EventHandler.lua` - wires everything together; loaded last since it depends on Core and UI.
 
-`UI/SettingsPanel.lua` (the in-game Settings panel + `/cda` slash commands) exists but is currently commented out in `CooldownAlert.toc` pending further verification.
+There is currently no in-game settings UI; a settings panel is planned for a future revision.
 
 ## Installation
 

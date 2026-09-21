@@ -23,10 +23,7 @@ Core\Settings.lua
 # ── UI ───────────────────────────────────────────────────────────────────────
 UI\TextDisplay.lua
 UI\CooldownDisplay.lua
-UI\PreviewFrame.lua
 
 # ── Bootstrap / event wiring (must load after Core + UI) ────────────────────
 Core\Bootstrap.lua
 Core\EventHandler.lua
-
-# UI\SettingsPanel.lua

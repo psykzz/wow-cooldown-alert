@@ -1,6 +1,6 @@
 -- Settings.lua
--- Applies persisted CooldownAlertDB values to whichever display and preview
--- frame currently exist. Safe to call at any time -- each target module is
+-- Applies persisted CooldownAlertDB values to whichever display module
+-- currently exists. Safe to call at any time -- each target module is
 -- optional and simply skipped if it hasn't been created yet.
 
 CooldownAlert = CooldownAlert or {}
@@ -15,9 +15,5 @@ function CooldownAlert.ApplySettings()
 
     if CooldownAlert.CooldownDisplay and CooldownAlert.CooldownDisplay.ApplySettings then
         CooldownAlert.CooldownDisplay.ApplySettings()
-    end
-
-    if CooldownAlert.PreviewFrame and CooldownAlert.PreviewFrame.ApplySettings then
-        CooldownAlert.PreviewFrame.ApplySettings()
     end
 end
