@@ -10,6 +10,7 @@ CooldownAlert.TextDisplay = {}
 local display = nil
 local timeSinceTrigger = 0
 local activeSpellID = nil
+local activeItemID = nil
 
 --- Formats `remainingSeconds` using the saved textFormat preset. Exposed on
 --- the namespace so the settings preview frame can reuse identical
@@ -49,14 +50,19 @@ function CooldownAlert.TextDisplay.Create()
     display:SetScript("OnUpdate", function(self, elapsed)
         timeSinceTrigger = timeSinceTrigger + elapsed
 
-        if not activeSpellID then
+        if not activeSpellID and not activeItemID then
             CooldownAlert.TextDisplay.Hide()
             return
         end
 
-        local startTime, duration = CooldownAlert.GetSpellCD(activeSpellID)
+        local startTime, duration
+        if activeItemID then
+            startTime, duration = CooldownAlert.GetItemCD(activeItemID)
+        else
+            startTime, duration = CooldownAlert.GetSpellCD(activeSpellID)
+        end
 
-        -- Defense in depth: CooldownAlert.GetSpellCD already sanitizes secret
+        -- Defense in depth: GetSpellCD/GetItemCD already sanitize secret
         -- values to (0, 0), but guard here too in case a future API change
         -- reintroduces a secret value straight into this arithmetic.
         if PsyUtils.Secrets.IsSecret(startTime) or PsyUtils.Secrets.IsSecret(duration) then
@@ -91,9 +97,11 @@ function CooldownAlert.TextDisplay.Get()
     return display or CooldownAlert.TextDisplay.Create()
 end
 
--- Show the display for the given spell and reset the trigger timer.
-function CooldownAlert.TextDisplay.Show(spellID)
+-- Show the display for the given spell (or, if `itemID` is provided and
+-- resolvable, item) and reset the trigger timer.
+function CooldownAlert.TextDisplay.Show(spellID, itemID)
     activeSpellID = spellID
+    activeItemID = itemID
     timeSinceTrigger = 0
     local frame = CooldownAlert.TextDisplay.Get()
     frame:SetAlpha(1)
@@ -106,6 +114,7 @@ function CooldownAlert.TextDisplay.Hide()
         display:Hide()
     end
     activeSpellID = nil
+    activeItemID = nil
     timeSinceTrigger = 0
 end
 

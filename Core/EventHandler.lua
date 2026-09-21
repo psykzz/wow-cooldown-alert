@@ -10,12 +10,15 @@ eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("BAG_UPDATE")
 
 -- Routes to whichever display module is active for this client, chosen the
--- same way Bootstrap.lua chose which one to create.
+-- same way Bootstrap.lua chose which one to create. Item-triggered spells
+-- (trinkets, potions) are resolved back to their item via the bag cache so
+-- the display shows the item's cooldown instead of treating it as a spell.
 local function ShowAlert(spellID)
+    local itemID = CooldownAlert.GetItemIdForSpell(spellID)
     if CooldownAlert.SupportsCooldownDurationObjects() then
-        CooldownAlert.CooldownDisplay.Show(spellID)
+        CooldownAlert.CooldownDisplay.Show(spellID, itemID)
     else
-        CooldownAlert.TextDisplay.Show(spellID)
+        CooldownAlert.TextDisplay.Show(spellID, itemID)
     end
 end
 

@@ -4,9 +4,10 @@
 -- API behaviour across the various WoW clients (retail, classic, "Classic
 -- Beta" aka wow-forever, etc). In particular, several clients now return
 -- "secret" cooldown values from C_Spell.GetSpellCooldown that cannot be used
--- in normal arithmetic -- attempting to do so taints execution and throws in
--- combat. Classic Beta shares the retail engine, so it hit this exact bug
--- even though it isn't a "Midnight" build by version number.
+-- in normal arithmetic -- secret values are distinct from UI taint, and any
+-- arithmetic or comparison performed on one always throws, regardless of
+-- execution context. Classic Beta shares the retail engine, so it hit this
+-- exact bug even though it isn't a "Midnight" build by version number.
 
 CooldownAlert = CooldownAlert or {}
 
@@ -15,7 +16,7 @@ CooldownAlert = CooldownAlert or {}
 --- whether secret cooldown values are in play. Use
 --- CooldownAlert.SupportsCooldownDurationObjects() for that instead.
 function CooldownAlert.IsMidnight()
-    return select(4, GetBuildInfo()) > 120000
+    return select(4, GetBuildInfo()) >= 120000
 end
 
 local supportsDurationObjects = nil

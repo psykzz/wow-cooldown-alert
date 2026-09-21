@@ -79,9 +79,10 @@ end
 PsyUtils.Secrets = PsyUtils.Secrets or {}
 
 --- Returns true if `value` is a "secret" value that cannot be used in normal
---- arithmetic/comparisons without tainting execution (WoW's taint-protection
+--- arithmetic/comparisons without throwing an error (WoW's secret-value
 --- mechanism for certain sensitive API results, e.g. some cooldown fields).
---- Safe to call on any client, including ones without issecretvalue().
+--- This is distinct from UI taint. Safe to call on any client, including
+--- ones without issecretvalue().
 function PsyUtils.Secrets.IsSecret(value)
     if type(issecretvalue) ~= "function" then
         return false

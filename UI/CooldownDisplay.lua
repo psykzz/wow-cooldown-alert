@@ -11,6 +11,17 @@ CooldownAlert.CooldownDisplay = {}
 local cooldown = nil
 local timeSinceTrigger = 0
 local activeSpellID = nil
+local activeItemID = nil
+
+-- Returns the duration object for the currently active spell/item, or nil.
+local function GetActiveDuration()
+    if activeItemID and C_Item and C_Item.GetItemCooldownDuration then
+        return C_Item.GetItemCooldownDuration(activeItemID)
+    elseif activeSpellID and C_Spell and C_Spell.GetSpellCooldownDuration then
+        return C_Spell.GetSpellCooldownDuration(activeSpellID)
+    end
+    return nil
+end
 
 -- Create the cooldown frame.
 function CooldownAlert.CooldownDisplay.Create()
@@ -29,18 +40,15 @@ function CooldownAlert.CooldownDisplay.Create()
     cooldown:SetScript("OnUpdate", function(self, elapsed)
         timeSinceTrigger = timeSinceTrigger + elapsed
 
-        if not activeSpellID then
+        if not activeSpellID and not activeItemID then
             CooldownAlert.CooldownDisplay.Hide()
             return
         end
 
         -- Check if the cooldown duration object still has time remaining.
-        if C_Spell and C_Spell.GetSpellCooldownDuration then
-            local dur = C_Spell.GetSpellCooldownDuration(activeSpellID)
-            if not dur then
-                CooldownAlert.CooldownDisplay.Hide()
-                return
-            end
+        if not GetActiveDuration() then
+            CooldownAlert.CooldownDisplay.Hide()
+            return
         end
 
         local db = CooldownAlertDB
@@ -62,19 +70,22 @@ function CooldownAlert.CooldownDisplay.Get()
     return cooldown or CooldownAlert.CooldownDisplay.Create()
 end
 
--- Show the display using the given spell's cooldown duration object.
-function CooldownAlert.CooldownDisplay.Show(spellID)
+-- Show the display using the given spell's (or, if `itemID` is provided and
+-- resolvable, item's) cooldown duration object.
+function CooldownAlert.CooldownDisplay.Show(spellID, itemID)
     activeSpellID = spellID
+    activeItemID = itemID
+    local dur = GetActiveDuration()
+    if not dur then
+        activeSpellID = nil
+        activeItemID = nil
+        return
+    end
+
     timeSinceTrigger = 0
     local frame = CooldownAlert.CooldownDisplay.Get()
 
-    if spellID and C_Spell and C_Spell.GetSpellCooldownDuration then
-        local dur = C_Spell.GetSpellCooldownDuration(spellID)
-        if dur then
-            frame:SetCooldownFromDurationObject(dur)
-        end
-    end
-
+    frame:SetCooldownFromDurationObject(dur)
     frame:SetAlpha(1)
     frame:Show()
 end
@@ -85,6 +96,7 @@ function CooldownAlert.CooldownDisplay.Hide()
         cooldown:Hide()
     end
     activeSpellID = nil
+    activeItemID = nil
     timeSinceTrigger = 0
 end
 

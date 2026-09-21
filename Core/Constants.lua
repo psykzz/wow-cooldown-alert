@@ -8,8 +8,8 @@ CooldownAlert.ADDON_NAME = "CooldownAlert"
 
 -- Default values used for first-time initialization and Settings API defaults.
 CooldownAlertDB_Defaults = {
-    holdTime    = 0.5,
-    fadeOutTime = 0.5,
+    holdTime    = 0.3,
+    fadeOutTime = 0.7,
     fontSize    = 28,
     fontFace    = "Fonts\\FRIZQT__.TTF",
     fontFlags   = "OUTLINE",
