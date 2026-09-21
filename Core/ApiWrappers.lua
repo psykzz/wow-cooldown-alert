@@ -68,6 +68,11 @@ local MIN_REMAINING_TIME = 0.5
 --- the item's cooldown, falling back to the spell's when the item has none.
 --- Secret cooldowns can't be measured against the thresholds above, so they
 --- always show (see SanitizeCooldown's doc comment).
+--- This always uses the raw (startTime, duration, isSecret) wrappers, even
+--- on duration-object-capable clients: a duration object is opaque by
+--- design and exposes no readable magnitude, so there is no duration-object
+--- equivalent for a numeric threshold decision like this one (see
+--- AGENTS.md's secret-values section).
 function CooldownAlert.ShouldShowAlert(spellID, itemID)
     local startTime, duration, isSecret = 0, 0, false
     if itemID then
