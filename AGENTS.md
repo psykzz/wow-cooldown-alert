@@ -1,4 +1,4 @@
-# Copilot Instructions
+# Agent Instructions
 
 ## WoW Midnight: secret values vs. UI taint
 
@@ -13,6 +13,6 @@ Do **not** confuse them with **UI taint** — they are entirely different concep
 ### Implications for this addon
 
 - `GetSpellCooldown` / `C_Spell.GetSpellCooldown` and the item equivalents can return secret `startTime` and/or `duration` values on WoW Midnight.
-- `issecretvalue(v)` (shimmed to `function() return false end` on Classic/TBC) must be called on **both** `start` **and** `duration` before performing any arithmetic.
-- When a secret value is detected, skip the arithmetic entirely.  `UNIT_SPELLCAST_FAILED` only fires when the spell genuinely went on cooldown, so it is safe to show the alert unconditionally in that case.
-- The shims for `issecretvalue` and `FormatRemainingDuration` live at the top of `CooldownAlert.lua` and keep the addon functional on non-Midnight clients.
+- `PsyUtils.Secrets.IsSecret(v)` (defined in `Libs/PsyUtils/PsyUtils.lua`, shimmed to always return `false` on clients without a real `issecretvalue`, e.g. Classic/TBC) must be called on **both** `start` **and** `duration` before performing any arithmetic on them — see `Core/ApiWrappers.lua` and `UI/TextDisplay.lua` for the call sites.
+- When a secret value is detected, skip the arithmetic entirely. `UNIT_SPELLCAST_FAILED` only fires when the spell genuinely went on cooldown, so it is safe to show the alert unconditionally in that case.
+- Prefer the duration-object cooldown APIs (`CooldownAlert.SupportsCooldownDurationObjects()` in `Core/ClientCapabilities.lua`) when available — they sidestep secret-value arithmetic entirely and must be used over raw `(startTime, duration)` math whenever supported.
