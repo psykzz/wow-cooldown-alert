@@ -1,4 +1,4 @@
-## Interface: 11508,20505,50503,120001
+## Interface: 11508,20505,50503,120001,16001
 ## Title: Cooldown Alert
 ## Notes: Shows remaining time on failed spell or item casts.
 ## Author: PsyKzz
@@ -8,5 +8,25 @@
 ## Category-enUS: User Interface
 ## SavedVariables: CooldownAlertDB
 
-CooldownAlert.lua
-CooldownAlertSettings.lua
+# ── Libs ─────────────────────────────────────────────────────────────────────
+# Reusable helpers shared across PsyKzz's addons. Safe to copy this whole
+# folder into other addons; see Libs/PsyUtils/PsyUtils.lua for details.
+Libs\PsyUtils\PsyUtils.lua
+
+# ── Core ─────────────────────────────────────────────────────────────────────
+Core\Constants.lua
+Core\ClientCapabilities.lua
+Core\ApiWrappers.lua
+Core\BagCache.lua
+Core\Settings.lua
+
+# ── UI ───────────────────────────────────────────────────────────────────────
+UI\TextDisplay.lua
+UI\CooldownDisplay.lua
+UI\PreviewFrame.lua
+
+# ── Bootstrap / event wiring (must load after Core + UI) ────────────────────
+Core\Bootstrap.lua
+Core\EventHandler.lua
+
+# UI\SettingsPanel.lua
