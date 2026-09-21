@@ -13,8 +13,12 @@ eventFrame:RegisterEvent("BAG_UPDATE")
 -- same way Bootstrap.lua chose which one to create. Item-triggered spells
 -- (trinkets, potions) are resolved back to their item via the bag cache so
 -- the display shows the item's cooldown instead of treating it as a spell.
+-- Trivial/near-expired cooldowns (and failures that never started a real
+-- cooldown at all) are filtered out by ShouldShowAlert.
 local function ShowAlert(spellID)
     local itemID = CooldownAlert.GetItemIdForSpell(spellID)
+    if not CooldownAlert.ShouldShowAlert(spellID, itemID) then return end
+
     if CooldownAlert.SupportsCooldownDurationObjects() then
         CooldownAlert.CooldownDisplay.Show(spellID, itemID)
     else

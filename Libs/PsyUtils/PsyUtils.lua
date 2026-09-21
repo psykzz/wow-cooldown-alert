@@ -37,13 +37,13 @@ PsyUtils.Format = PsyUtils.Format or {}
 function PsyUtils.Format.Countdown(remainingSeconds, preset)
     remainingSeconds = math.max(0, remainingSeconds or 0)
     if preset == "auto1" then
-        return remainingSeconds > 1 and string.format("%.0f", remainingSeconds) or string.format("%.1f", remainingSeconds)
+        return remainingSeconds > 1 and string.format("%.0fs", remainingSeconds) or string.format("%.1fs", remainingSeconds)
     elseif preset == "decimal" then
-        return string.format("%.1f", remainingSeconds)
+        return string.format("%.1fs", remainingSeconds)
     elseif preset == "integer" then
-        return string.format("%.0f", remainingSeconds)
+        return string.format("%.0fs", remainingSeconds)
     else -- "auto3" (default)
-        return remainingSeconds > 3 and string.format("%.0f", remainingSeconds) or string.format("%.1f", remainingSeconds)
+        return remainingSeconds > 3 and string.format("%.0fs", remainingSeconds) or string.format("%.1fs", remainingSeconds)
     end
 end
 

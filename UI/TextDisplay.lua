@@ -12,18 +12,16 @@ local timeSinceTrigger = 0
 local activeSpellID = nil
 local activeItemID = nil
 
---- Formats `remainingSeconds` using the saved textFormat preset. Exposed on
---- the namespace so the settings preview frame can reuse identical
---- formatting logic.
-function CooldownAlert.FormatCountdown(remainingSeconds)
+--- Formats `remainingSeconds` using the saved textFormat preset.
+local function FormatCountdown(remainingSeconds)
     local preset = (CooldownAlertDB and CooldownAlertDB.textFormat) or CooldownAlertDB_Defaults.textFormat
     return PsyUtils.Format.Countdown(remainingSeconds, preset)
 end
 
 --- Applies textContent and alpha to frame.text. When alpha is nil the alert
 --- has expired: the text alpha is reset to 1 (ready for the next trigger)
---- and the frame is hidden. Shared by TextDisplay and the settings preview.
-function CooldownAlert.UpdateElement(frame, textContent, alpha)
+--- and the frame is hidden.
+local function UpdateElement(frame, textContent, alpha)
     frame.text:SetText(textContent)
     if alpha == nil then
         frame.text:SetAlpha(1)
@@ -55,38 +53,46 @@ function CooldownAlert.TextDisplay.Create()
             return
         end
 
-        local startTime, duration
+        -- Prefer the item's cooldown (when resolvable), falling back to the
+        -- spell's if the item has none (e.g. it left the bags).
+        local startTime, duration, isSecret = 0, 0, false
         if activeItemID then
-            startTime, duration = CooldownAlert.GetItemCD(activeItemID)
+            startTime, duration, isSecret = CooldownAlert.GetItemCD(activeItemID)
+        end
+        if not isSecret and duration == 0 and activeSpellID then
+            startTime, duration, isSecret = CooldownAlert.GetSpellCD(activeSpellID)
+        end
+
+        local remaining = nil
+        if isSecret then
+            -- Can't safely read a secret cooldown's remaining time (see
+            -- AGENTS.md). Show a generic indicator and let the hold/fade
+            -- timer -- based on time since trigger, not remaining cooldown
+            -- -- decide when to hide, instead of treating it as "no
+            -- cooldown".
+            remaining = nil
+        elseif duration == 0 then
+            CooldownAlert.TextDisplay.Hide()
+            return
         else
-            startTime, duration = CooldownAlert.GetSpellCD(activeSpellID)
-        end
-
-        -- Defense in depth: GetSpellCD/GetItemCD already sanitize secret
-        -- values to (0, 0), but guard here too in case a future API change
-        -- reintroduces a secret value straight into this arithmetic.
-        if PsyUtils.Secrets.IsSecret(startTime) or PsyUtils.Secrets.IsSecret(duration) then
-            CooldownAlert.TextDisplay.Hide()
-            return
-        end
-
-        if not duration or duration == 0 then
-            CooldownAlert.TextDisplay.Hide()
-            return
-        end
-
-        local remaining = startTime + duration - GetTime()
-        if remaining <= 0 then
-            CooldownAlert.TextDisplay.Hide()
-            return
+            remaining = startTime + duration - GetTime()
+            if remaining <= 0 then
+                CooldownAlert.TextDisplay.Hide()
+                return
+            end
         end
 
         local db = CooldownAlertDB
         local holdTime = (db and db.holdTime) or CooldownAlertDB_Defaults.holdTime
         local fadeOutTime = (db and db.fadeOutTime) or CooldownAlertDB_Defaults.fadeOutTime
+        local alpha = PsyUtils.Math.ComputeFadeAlpha(timeSinceTrigger, holdTime, fadeOutTime)
+        if alpha == nil then
+            CooldownAlert.TextDisplay.Hide()
+            return
+        end
 
-        CooldownAlert.UpdateElement(self, CooldownAlert.FormatCountdown(remaining),
-            PsyUtils.Math.ComputeFadeAlpha(timeSinceTrigger, holdTime, fadeOutTime))
+        local textContent = remaining and FormatCountdown(remaining) or "..."
+        UpdateElement(self, textContent, alpha)
     end)
 
     return display

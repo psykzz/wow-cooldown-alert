@@ -9,15 +9,20 @@ CooldownAlert = CooldownAlert or {}
 CooldownAlert.CooldownDisplay = {}
 
 local cooldown = nil
+local countdownFont = nil
 local timeSinceTrigger = 0
 local activeSpellID = nil
 local activeItemID = nil
 
 -- Returns the duration object for the currently active spell/item, or nil.
+-- Prefers the item's cooldown (when resolvable), falling back to the
+-- spell's if the item has none (e.g. it left the bags, or never had one).
 local function GetActiveDuration()
     if activeItemID and C_Item and C_Item.GetItemCooldownDuration then
-        return C_Item.GetItemCooldownDuration(activeItemID)
-    elseif activeSpellID and C_Spell and C_Spell.GetSpellCooldownDuration then
+        local dur = C_Item.GetItemCooldownDuration(activeItemID)
+        if dur then return dur end
+    end
+    if activeSpellID and C_Spell and C_Spell.GetSpellCooldownDuration then
         return C_Spell.GetSpellCooldownDuration(activeSpellID)
     end
     return nil
@@ -100,7 +105,12 @@ function CooldownAlert.CooldownDisplay.Hide()
     timeSinceTrigger = 0
 end
 
--- Apply settings (position) to the cooldown frame.
+-- Apply settings (position, and countdown font where supported) to the
+-- cooldown frame. There is no equivalent for `textFormat`: the native
+-- Cooldown widget renders its own countdown text from the (potentially
+-- secret) duration object, so a custom decimal/auto format can't be computed
+-- without secret-value arithmetic -- that's the whole reason this display
+-- exists instead of always using TextDisplay.
 function CooldownAlert.CooldownDisplay.ApplySettings()
     if not cooldown then return end
     local db = CooldownAlertDB
@@ -111,4 +121,16 @@ function CooldownAlert.CooldownDisplay.ApplySettings()
 
     cooldown:ClearAllPoints()
     cooldown:SetPoint("CENTER", UIParent, "CENTER", x, y)
+
+    -- Best-effort: SetCountdownFont isn't available on every client. Skip
+    -- quietly where it isn't rather than erroring.
+    if cooldown.SetCountdownFont and CreateFont then
+        local face = db.fontFace or CooldownAlertDB_Defaults.fontFace
+        local size = db.fontSize or CooldownAlertDB_Defaults.fontSize
+        local flags = db.fontFlags or CooldownAlertDB_Defaults.fontFlags
+
+        countdownFont = countdownFont or CreateFont("CooldownAlertCountdownFont")
+        countdownFont:SetFont(face, size, flags)
+        cooldown:SetCountdownFont(countdownFont)
+    end
 end
