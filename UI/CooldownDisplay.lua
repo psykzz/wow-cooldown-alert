@@ -131,6 +131,6 @@ function CooldownAlert.CooldownDisplay.ApplySettings()
 
         countdownFont = countdownFont or CreateFont("CooldownAlertCountdownFont")
         countdownFont:SetFont(face, size, flags)
-        cooldown:SetCountdownFont(countdownFont)
+        cooldown:SetCountdownFont("CooldownAlertCountdownFont")
     end
 end
