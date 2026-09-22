@@ -45,12 +45,16 @@ end
 --- Returns (startTime, duration, isSecret) for the given item's cooldown.
 --- (startTime, duration) are (0, 0) when unavailable OR when secret --
 --- always check isSecret before treating (0, 0) as "no cooldown". Prefers
---- the modern C_Item API, falling back to the global GetItemCooldown on
---- older clients.
+--- C_Item's cooldown-info table, while also accepting clients that expose its
+--- positional return values, falling back to the global GetItemCooldown when
+--- C_Item is unavailable.
 function CooldownAlert.GetItemCD(itemID)
     if C_Item and C_Item.GetItemCooldown then
-        local cd = C_Item.GetItemCooldown(itemID)
-        if cd then return SanitizeCooldown(cd.startTime, cd.duration) end
+        local cd, duration = C_Item.GetItemCooldown(itemID)
+        if type(cd) == "table" then
+            return SanitizeCooldown(cd.startTime, cd.duration)
+        end
+        return SanitizeCooldown(cd, duration)
     else
         return SanitizeCooldown(GetItemCooldown(itemID))
     end
