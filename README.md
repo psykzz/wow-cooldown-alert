@@ -7,6 +7,17 @@ A World of Warcraft addon that shows remaining time on failed spell or item cast
 - Displays cooldown alerts for spells and items
 - Compatible with multiple WoW versions (Classic, TBC, Wrath, Retail)
 
+## Project Structure
+
+The addon is split into small, single-purpose modules, loaded in this order (see `CooldownAlert.toc`):
+
+- `Libs/PsyUtils/` - reusable helpers shared across PsyKzz's addons.
+- `Core/` - constants, client-capability detection, API compat wrappers, bag cache, and settings persistence.
+- `UI/` - the on-screen cooldown text/icon display.
+- `Core/Bootstrap.lua` / `Core/EventHandler.lua` - wires everything together; loaded last since it depends on Core and UI.
+
+There is currently no in-game settings UI; a settings panel is planned for a future revision.
+
 ## Installation
 
 Install via CurseForge, Wago, or manually by downloading the latest release from GitHub.
