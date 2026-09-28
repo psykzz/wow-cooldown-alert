@@ -7,3 +7,5 @@ ignore:
   - AGENTS.md
   - .github
   - .gitignore
+  - tests
+  - requirements-test.txt

@@ -16,13 +16,15 @@ The addon is split into small, single-purpose modules, loaded in this order (see
 - `UI/` - the on-screen cooldown text/icon display.
 - `Core/Bootstrap.lua` / `Core/EventHandler.lua` - wires everything together; loaded last since it depends on Core and UI.
 
-There is currently no in-game settings UI; a settings panel is planned for a future revision.
+Open **Options > AddOns > Cooldown Alert** to change the font size (12-48, default 28). Moving the slider saves and applies the size immediately and shows a four-second countdown preview at the alert position. No Save button is needed.
 
 ## Installation
 
 Install via CurseForge, Wago, or manually by downloading the latest release from GitHub.
 
 ## Development
+
+Run the settings tests with `python -m pip install -r requirements-test.txt` and `python -m unittest discover -s tests`.
 
 ### Creating a Release
 
