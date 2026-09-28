@@ -59,7 +59,7 @@ function CooldownAlert.RegisterSettings()
             ShowFontPreview()
         end
     )
-    local options = Settings.CreateSliderOptions(12, 48, 1)
+    local options = Settings.CreateSliderOptions(6, 48, 1)
     options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, function(value)
         return tostring(value)
     end)
