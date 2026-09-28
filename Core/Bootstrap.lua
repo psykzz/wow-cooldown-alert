@@ -23,5 +23,6 @@ bootstrapFrame:SetScript("OnEvent", function(self, _, addonName)
     end
 
     CooldownAlert.ApplySettings()
+    CooldownAlert.RegisterSettings()
     self:UnregisterEvent("ADDON_LOADED")
 end)
