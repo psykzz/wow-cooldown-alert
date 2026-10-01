@@ -5,7 +5,9 @@
 ## Version: @project-version@
 ## X-Curse-Project-ID: 1439617
 ## X-Category: User Interface
+## Category: User Interface
 ## Category-enUS: User Interface
+## IconTexture: Interface\Icons\INV_Misc_PocketWatch_01
 ## SavedVariables: CooldownAlertDB
 
 # ── Libs ─────────────────────────────────────────────────────────────────────

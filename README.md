@@ -6,6 +6,7 @@ A World of Warcraft addon that shows remaining time on failed spell or item cast
 
 - Displays cooldown alerts for spells and items
 - Compatible with multiple WoW versions (Classic, TBC, Wrath, Retail)
+- Listed under **User Interface** in the AddOns list with a pocket-watch icon
 
 ## Project Structure
 
